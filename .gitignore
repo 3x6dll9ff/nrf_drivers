@@ -1,3 +1,5 @@
 Output
 *.emSession
 *.jlink
+nrf5_sdk/
+.DS_Store

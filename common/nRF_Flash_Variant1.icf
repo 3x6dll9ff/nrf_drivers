@@ -39,7 +39,7 @@ File    : nRF_Flash_Variant1.icf
 Purpose : nRF linker script for application placement in Flash,
           for use with the SEGGER Linker.
 Maps    : nRF52805_xxAA, nRF52810_xxAA, nRF52811_xxAA, nRF52820_xxAA, 
-          nRF52832_xxAA, nRF52832_xxAB, nRF52833_xxAA
+          nRF52832_xxAA, nRF52832_xxAB, nRF52833_xxAA, nRF52840_xxAA
 Literature:
   [1]  SEGGER Linker User Guide (https://www.segger.com/doc/UM20005_Linker.html)
   [2]  SEGGER Linker Section Placement (https://wiki.segger.com/SEGGER_Linker_Script_Files)

@@ -1,7 +1,7 @@
 #ifndef __BOARD_H
 #define __BOARD_H
 
-#include "nrf52833.h"
+#include "nrf52840.h"
 
 //=========================== define ==========================================
 
@@ -14,15 +14,4 @@
 void board_init(void);
 void board_sleep(void);
 
-/**
-\}
-\}
-*/
-
 #endif
-
-    //  3           2            1           0
-    // 1098 7654 3210 9876 5432 1098 7654 3210
-    // .... .... .... .... .... .... .... .... poipoi: poipoi=poipoi
-    // xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx 
-    //    0    0    0    0    0    0    0    0 0x00000000
