@@ -1,0 +1,217 @@
+[
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32"
+  },
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/variants/esp32"
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Developer/embedded/aiot_play_fw/esp32/build/sketch/Sensors_App.ino.cpp",
+    "Include": "OneWire.h",
+    "Includepath": "/Users/danilakardashevkii/Documents/Arduino/libraries/OneWire"
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Developer/embedded/aiot_play_fw/esp32/build/sketch/Sensors_App.ino.cpp",
+    "Include": "DallasTemperature.h",
+    "Includepath": "/Users/danilakardashevkii/Documents/Arduino/libraries/DallasTemperature"
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Developer/embedded/aiot_play_fw/esp32/build/sketch/Sensors_App.ino.cpp",
+    "Include": "DHT.h",
+    "Includepath": "/Users/danilakardashevkii/Documents/Arduino/libraries/DHT_sensor_library"
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Developer/embedded/aiot_play_fw/esp32/build/sketch/Sensors_App.ino.cpp",
+    "Include": "BLEDevice.h",
+    "Includepath": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src"
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Developer/embedded/aiot_play_fw/esp32/build/sketch/Sensors_App.ino.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Documents/Arduino/libraries/OneWire/OneWire.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Documents/Arduino/libraries/DallasTemperature/DallasTemperature.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Documents/Arduino/libraries/DHT_sensor_library/DHT.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Documents/Arduino/libraries/DHT_sensor_library/DHT_U.cpp",
+    "Include": "Adafruit_Sensor.h",
+    "Includepath": "/Users/danilakardashevkii/Documents/Arduino/libraries/Adafruit_Unified_Sensor"
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Documents/Arduino/libraries/DHT_sensor_library/DHT_U.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLE2901.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLE2902.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLE2904.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEAddress.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEAdvertisedDevice.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEAdvertising.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEBeacon.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLECharacteristic.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLECharacteristicMap.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEClient.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEDescriptor.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEDescriptorMap.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEDevice.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEEddystoneTLM.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEEddystoneURL.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEExceptions.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEHIDDevice.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLERemoteCharacteristic.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLERemoteDescriptor.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLERemoteService.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEScan.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLESecurity.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEServer.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEService.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEServiceMap.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEUUID.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEUtils.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEValue.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/FreeRTOS.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/GeneralUtils.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/Users/danilakardashevkii/Documents/Arduino/libraries/Adafruit_Unified_Sensor/Adafruit_Sensor.cpp",
+    "Include": "",
+    "Includepath": null
+  }
+]
