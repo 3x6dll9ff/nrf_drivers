@@ -102,16 +102,44 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
+#define SENSOR_SERVICE_UUID_BASE        {0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x10, 0x32, 0x54, 0x76, 0x0F, 0xB0, 0x00, 0x00}
+#define SENSOR_SERVICE_UUID             0xA001
+#define SENSOR_CHAR_UUID                0xA002
+#define SENSOR_PAYLOAD_LEN              10u
+#define SENSOR_PAYLOAD_MAX_LEN          20u
+#define BLE_CONN_MONITOR_DISABLED       1
+
+typedef struct __attribute__((packed))
+{
+    uint16_t light_raw;
+    uint16_t water_raw;
+    int16_t  temp_inside_cx100;
+    int16_t  temp_outside_cx100;
+    uint16_t hum_outside_pctx100;
+} sensor_payload_t;
+
+typedef struct
+{
+    uint16_t                  service_handle;
+    ble_gatts_char_handles_t  sensor_char_handles;
+    uint8_t                   uuid_type;
+} ble_sensor_service_t;
+
+static ble_sensor_service_t   m_sensor_service;
 
 BLE_LBS_DEF(m_lbs);                                                             /**< LED Button Service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
+static uint32_t m_conn_no_activity_counter = 0;                                  /**< Counter for connection inactivity check. */
 
 static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
 static uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
 static uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];         /**< Buffer for storing an encoded scan data. */
+
+static void sensor_service_init(void);
+static void sensor_payload_process(sensor_payload_t const * p_payload);
 
 /**@brief Struct that contains pointers to the encoded advertising data. */
 static ble_gap_adv_data_t m_adv_data =
@@ -213,6 +241,52 @@ static void leds_init(void)
 }
 
 
+// Define timer using APP_TIMER_DEF macro for app_timer v2
+APP_TIMER_DEF(m_conn_check_timer_id);
+static uint32_t m_conn_start_tick = 0;
+
+/**@brief Timer handler for connection status check.
+ */
+static void conn_check_timer_handler(void * p_context)
+{
+#if BLE_CONN_MONITOR_DISABLED
+    UNUSED_PARAMETER(p_context);
+    return;
+#endif
+    if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
+    {
+        m_conn_no_activity_counter++;
+        
+        // Log every 2 seconds (4 checks)
+        if (m_conn_no_activity_counter % 4 == 0)
+        {
+            NRF_LOG_INFO("Connection check: counter=%d (handle=%d)", 
+                         m_conn_no_activity_counter, m_conn_handle);
+            NRF_LOG_FLUSH();
+        }
+        
+        // If no activity for 5 seconds (10 checks at 500ms each), force disconnect
+        if (m_conn_no_activity_counter >= 10)
+        {
+            NRF_LOG_WARNING("=== No connection activity for 5 seconds, forcing disconnect ===");
+            NRF_LOG_FLUSH();
+            ret_code_t err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+            if (err_code != NRF_SUCCESS && err_code != NRF_ERROR_INVALID_STATE)
+            {
+                NRF_LOG_ERROR("Failed to disconnect: 0x%08X", err_code);
+                NRF_LOG_FLUSH();
+            }
+            else
+            {
+                NRF_LOG_INFO("Disconnect command sent, waiting for DISCONNECTED event");
+                NRF_LOG_FLUSH();
+            }
+            // Don't reset handle here - let DISCONNECTED event handle it
+            m_conn_no_activity_counter = 0;
+        }
+    }
+}
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module.
@@ -224,6 +298,14 @@ static void timers_init(void)
     // Initialize timer module, making it use the scheduler
     err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
+
+    // Create timer for connection status check
+    err_code = app_timer_create(&m_conn_check_timer_id,
+                                APP_TIMER_MODE_REPEATED,
+                                conn_check_timer_handler);
+    APP_ERROR_CHECK(err_code);
+    NRF_LOG_INFO("Connection check timer created successfully");
+    NRF_LOG_FLUSH();
 }
 
 
@@ -277,7 +359,10 @@ static void advertising_init(void)
     ble_advdata_t advdata;
     ble_advdata_t srdata;
 
-    ble_uuid_t adv_uuids[] = {{LBS_UUID_SERVICE, m_lbs.uuid_type}};
+    ble_uuid_t adv_uuids[] =
+    {
+        {SENSOR_SERVICE_UUID, m_sensor_service.uuid_type}
+    };
 
     // Build and set advertising data.
     memset(&advdata, 0, sizeof(advdata));
@@ -366,6 +451,8 @@ static void services_init(void)
 
     err_code = ble_lbs_init(&m_lbs, &init);
     APP_ERROR_CHECK(err_code);
+
+    sensor_service_init();
 }
 
 
@@ -422,6 +509,93 @@ static void conn_params_init(void)
 
     err_code = ble_conn_params_init(&cp_init);
     APP_ERROR_CHECK(err_code);
+}
+
+static void sensor_service_init(void)
+{
+    ret_code_t       err_code;
+    ble_uuid_t       service_uuid;
+    ble_uuid128_t    base_uuid = {SENSOR_SERVICE_UUID_BASE};
+    ble_uuid_t       char_uuid;
+    ble_gatts_attr_md_t attr_md;
+    ble_gatts_char_md_t char_md;
+    ble_gatts_attr_t    attr_char_value;
+    uint8_t             initial_value[SENSOR_PAYLOAD_LEN] = {0};
+
+    err_code = sd_ble_uuid_vs_add(&base_uuid, &m_sensor_service.uuid_type);
+    APP_ERROR_CHECK(err_code);
+    NRF_LOG_INFO("Sensor service uuid_type=%d", m_sensor_service.uuid_type);
+
+    service_uuid.type = m_sensor_service.uuid_type;
+    service_uuid.uuid = SENSOR_SERVICE_UUID;
+
+    err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
+                                        &service_uuid,
+                                        &m_sensor_service.service_handle);
+    APP_ERROR_CHECK(err_code);
+
+    memset(&char_md, 0, sizeof(char_md));
+    char_md.char_props.write         = 1;
+    char_md.char_props.write_wo_resp = 1;
+
+    memset(&attr_md, 0, sizeof(attr_md));
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    attr_md.vloc = BLE_GATTS_VLOC_STACK;
+    attr_md.vlen = 1;
+
+    char_uuid.type = m_sensor_service.uuid_type;
+    char_uuid.uuid = SENSOR_CHAR_UUID;
+
+    memset(&attr_char_value, 0, sizeof(attr_char_value));
+    attr_char_value.p_uuid    = &char_uuid;
+    attr_char_value.p_attr_md = &attr_md;
+    attr_char_value.init_len  = sizeof(initial_value);
+    attr_char_value.init_offs = 0;
+    attr_char_value.max_len   = SENSOR_PAYLOAD_MAX_LEN;
+    attr_char_value.p_value   = initial_value;
+
+    err_code = sd_ble_gatts_characteristic_add(m_sensor_service.service_handle,
+                                               &char_md,
+                                               &attr_char_value,
+                                               &m_sensor_service.sensor_char_handles);
+    APP_ERROR_CHECK(err_code);
+
+    ble_uuid_t encoded_uuid = {
+        .uuid = SENSOR_SERVICE_UUID,
+        .type = m_sensor_service.uuid_type
+    };
+    uint8_t uuid_bytes[16] = {0};
+    uint8_t uuid_len = sizeof(uuid_bytes);
+    err_code = sd_ble_uuid_encode(&encoded_uuid, &uuid_len, uuid_bytes);
+    APP_ERROR_CHECK(err_code);
+    NRF_LOG_INFO("Sensor service UUID (%u bytes)", uuid_len);
+    NRF_LOG_HEXDUMP_INFO(uuid_bytes, uuid_len);
+
+    NRF_LOG_INFO("Sensor service ready (service_handle=%d, char_handle=%d)",
+                 m_sensor_service.service_handle,
+                 m_sensor_service.sensor_char_handles.value_handle);
+    NRF_LOG_FLUSH();
+}
+
+static void sensor_payload_process(sensor_payload_t const * p_payload)
+{
+    if (p_payload == NULL)
+    {
+        return;
+    }
+
+    float temp_inside  = (float)p_payload->temp_inside_cx100 / 100.0f;
+    float temp_outside = (float)p_payload->temp_outside_cx100 / 100.0f;
+    float hum_outside  = (float)p_payload->hum_outside_pctx100 / 100.0f;
+
+    NRF_LOG_INFO("Sensor payload received:");
+    NRF_LOG_INFO("  Light:  %u", p_payload->light_raw);
+    NRF_LOG_INFO("  Water:  %u", p_payload->water_raw);
+    NRF_LOG_INFO("  TempIn: %.2f C", temp_inside);
+    NRF_LOG_INFO("  TempOut: %.2f C", temp_outside);
+    NRF_LOG_INFO("  HumOut: %.2f %%", hum_outside);
+    NRF_LOG_FLUSH();
 }
 
 
@@ -509,10 +683,32 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ret_code_t err_code;
 
+    // Reset activity counter on any BLE event for our connection
+    if (m_conn_handle != BLE_CONN_HANDLE_INVALID && 
+        p_ble_evt->evt.gap_evt.conn_handle == m_conn_handle)
+    {
+        if (m_conn_no_activity_counter > 0)
+        {
+            NRF_LOG_DEBUG("BLE event received, resetting activity counter (was %d)", m_conn_no_activity_counter);
+        }
+        m_conn_no_activity_counter = 0;
+    }
+
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
-            NRF_LOG_INFO("Connected");
+        {
+            ble_gap_evt_connected_t const * p_connected_evt = &p_ble_evt->evt.gap_evt.params.connected;
+            NRF_LOG_INFO("=== Device connected ===");
+            NRF_LOG_INFO("Peer address: %02X:%02X:%02X:%02X:%02X:%02X",
+                         p_connected_evt->peer_addr.addr[5],
+                         p_connected_evt->peer_addr.addr[4],
+                         p_connected_evt->peer_addr.addr[3],
+                         p_connected_evt->peer_addr.addr[2],
+                         p_connected_evt->peer_addr.addr[1],
+                         p_connected_evt->peer_addr.addr[0]);
+            NRF_LOG_INFO("Connection handle: %d", p_ble_evt->evt.gap_evt.conn_handle);
+            NRF_LOG_FLUSH();
             bsp_board_led_on(CONNECTED_LED);
             bsp_board_led_off(ADVERTISING_LED);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
@@ -520,16 +716,41 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             APP_ERROR_CHECK(err_code);
             err_code = app_button_enable();
             APP_ERROR_CHECK(err_code);
+            // Reset activity counter and start connection check timer (check every 500ms)
+            m_conn_no_activity_counter = 0;
+            NRF_LOG_INFO("Starting connection activity monitor (500ms interval)");
+            NRF_LOG_FLUSH();
+            err_code = app_timer_start(m_conn_check_timer_id, APP_TIMER_TICKS(500), NULL);
+            APP_ERROR_CHECK(err_code);
+            m_conn_start_tick = app_timer_cnt_get();
             break;
+        }
 
         case BLE_GAP_EVT_DISCONNECTED:
-            NRF_LOG_INFO("Disconnected");
+        {
+            ble_gap_evt_disconnected_t const * p_disconnected_evt = &p_ble_evt->evt.gap_evt.params.disconnected;
+            NRF_LOG_INFO("=== Device disconnected ===");
+            NRF_LOG_INFO("Reason: 0x%02X (%s)", 
+                         p_disconnected_evt->reason,
+                         (p_disconnected_evt->reason == BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION) ? "Remote terminated" :
+                         (p_disconnected_evt->reason == BLE_HCI_LOCAL_HOST_TERMINATED_CONNECTION) ? "Local terminated" :
+                         "Other");
+            NRF_LOG_FLUSH();
             bsp_board_led_off(CONNECTED_LED);
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
+            m_conn_no_activity_counter = 0;
             err_code = app_button_disable();
             APP_ERROR_CHECK(err_code);
+            // Stop connection check timer
+            err_code = app_timer_stop(m_conn_check_timer_id);
+            APP_ERROR_CHECK(err_code);
+            uint32_t end_tick = app_timer_cnt_get();
+            uint32_t ticks = app_timer_cnt_diff_compute(end_tick, m_conn_start_tick);
+            uint32_t duration_ms = ROUNDED_DIV((uint64_t)ticks * 1000, APP_TIMER_CLOCK_FREQ);
+            NRF_LOG_INFO("Session duration: %lu ms", duration_ms);
             advertising_start();
             break;
+        }
 
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
             // Pairing not supported
@@ -539,6 +760,21 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                                                    NULL);
             APP_ERROR_CHECK(err_code);
             break;
+
+        case BLE_GAP_EVT_TIMEOUT:
+        {
+            if (p_ble_evt->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN)
+            {
+                NRF_LOG_WARNING("Connection timeout detected, forcing disconnect");
+                NRF_LOG_FLUSH();
+                // Force disconnect on timeout
+                if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
+                {
+                    err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+                    APP_ERROR_CHECK(err_code);
+                }
+            }
+        } break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
         {
@@ -573,6 +809,31 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                                              BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             APP_ERROR_CHECK(err_code);
             break;
+
+        case BLE_GATTS_EVT_WRITE:
+        {
+            ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+            if (p_evt_write->handle == m_sensor_service.sensor_char_handles.value_handle)
+            {
+                if (p_evt_write->len == sizeof(sensor_payload_t))
+                {
+                    sensor_payload_t payload;
+                    memcpy(&payload, p_evt_write->data, sizeof(sensor_payload_t));
+                    sensor_payload_process(&payload);
+                }
+                else
+                {
+                    NRF_LOG_WARNING("Sensor payload size mismatch: %u (expected %u)",
+                                    p_evt_write->len,
+                                    sizeof(sensor_payload_t));
+                    NRF_LOG_FLUSH();
+                }
+            }
+            else
+            {
+                NRF_LOG_DEBUG("Write to handle 0x%04X len=%u", p_evt_write->handle, p_evt_write->len);
+            }
+        } break;
 
         default:
             // No implementation needed.
@@ -690,6 +951,7 @@ static void idle_state_handle(void)
 /**@brief Function for application main entry.
  */
 int main(void)
+
 {
     // Initialize.
     log_init();
