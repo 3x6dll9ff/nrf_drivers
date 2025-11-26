@@ -621,6 +621,14 @@ static void sensor_payload_process(sensor_payload_t const * p_payload)
         return;
     }
 
+    // Дедупликация: выводим только если данные изменились
+    static sensor_payload_t last_payload = {0};
+    if (memcmp(&last_payload, p_payload, sizeof(sensor_payload_t)) == 0)
+    {
+        return; // Данные не изменились, не логируем
+    }
+    memcpy(&last_payload, p_payload, sizeof(sensor_payload_t));
+
     // Преобразуем в читаемый формат (деление на 100 для температур и влажности)
     int16_t ti_int = p_payload->temp_inside_cx100 / 100;
     uint8_t ti_frac = abs(p_payload->temp_inside_cx100 % 100);

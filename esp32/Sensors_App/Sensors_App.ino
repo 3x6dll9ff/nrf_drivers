@@ -11,7 +11,7 @@ static BLEAdvertising* pAdvertising = nullptr;
 static const uint16_t MANUF_ID = 0x1234;
 
 unsigned long lastPayloadSent = 0;
-const unsigned long PAYLOAD_INTERVAL_MS = 2000;
+const unsigned long PAYLOAD_INTERVAL_MS = 10000;
 
 // --- Пины сенсоров ---
 #define LIGHT_SENSOR_PIN 32      // LDR
@@ -78,6 +78,7 @@ void advertiseSensorPayload(int lightRaw, int waterRaw, float tempInside, float 
     advData.setManufacturerData(mData);
     advData.setName("ESP32_SENS");
 
+    pAdvertising->stop();  // Останавливаем предыдущую рекламу
     pAdvertising->setAdvertisementData(advData);
     pAdvertising->start();
 
@@ -141,4 +142,7 @@ void loop() {
 
   // --- Реклама данных по BLE ---
   advertiseSensorPayload(lightRaw, waterRaw, tempInside, tempOutside, humOutside);
+  
+  // Ждём 10 секунд до следующего цикла
+  delay(10000);
 }
