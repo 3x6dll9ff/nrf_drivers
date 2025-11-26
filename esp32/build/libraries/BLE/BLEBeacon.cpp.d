@@ -1,0 +1,34 @@
+/Users/danilakardashevkii/Developer/embedded/aiot_play_fw/esp32/build/libraries/BLE/BLEBeacon.cpp.o: \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEBeacon.cpp \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/soc/esp32/include/soc/soc_caps.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/qio_qspi/include/sdkconfig.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEBeacon.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEUUID.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/WString.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/pgmspace.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_gatt_defs.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_bt_defs.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/esp32-hal-log.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_timer/include/esp_timer.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/newlib/platform_include/stdio.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_common/include/esp_err.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_common/include/esp_compiler.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_hw_support/include/esp_etm.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_rom/esp32/include/esp32/rom/ets_sys.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_rom/include/esp_rom_sys.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/soc/esp32/include/soc/reset_reasons.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log_config.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log_level.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_common/include/esp_assert.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log_color.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log_buffer.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log_timestamp.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log_write.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log_format.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log_args.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_common/include/esp_macros.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_common/include/esp_assert.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_log_attr.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_common/include/esp_attr.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/log/include/esp_private/log_attr.h

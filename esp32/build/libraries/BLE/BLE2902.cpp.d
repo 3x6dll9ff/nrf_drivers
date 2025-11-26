@@ -1,8 +1,18 @@
-/Users/danilakardashevkii/Developer/embedded/aiot_play_fw/esp32/build/sketch/Sensors_App.ino.cpp.o: \
- /Users/danilakardashevkii/Developer/embedded/aiot_play_fw/esp32/build/sketch/Sensors_App.ino.cpp \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/Arduino.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/newlib/platform_include/stdio.h \
+/Users/danilakardashevkii/Developer/embedded/aiot_play_fw/esp32/build/libraries/BLE/BLE2902.cpp.o: \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLE2902.cpp \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/soc/esp32/include/soc/soc_caps.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/qio_qspi/include/sdkconfig.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLE2902.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEDescriptor.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEUUID.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/WString.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/pgmspace.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_gatt_defs.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_bt_defs.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLECharacteristic.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEValue.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/RTOS.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/Arduino.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/esp_arduino_version.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/freertos/FreeRTOS-Kernel/include/freertos/FreeRTOS.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/freertos/config/include/freertos/FreeRTOSConfig.h \
@@ -29,7 +39,6 @@
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/xtensa/include/xtensa/xtruntime.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_hw_support/include/spinlock.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_hw_support/include/esp_cpu.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/soc/esp32/include/soc/soc_caps.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/xtensa/include/xtensa_api.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/xtensa/include/xt_utils.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/xtensa/esp32/include/xtensa/config/extreg.h \
@@ -125,7 +134,6 @@
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/esp32-hal-cpu.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/WCharacter.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/WString.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/pgmspace.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/Stream.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/Print.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/Printable.h \
@@ -162,38 +170,11 @@
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/freertos_stats.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/io_pin_remap.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/Arduino.h \
- /Users/danilakardashevkii/Documents/Arduino/libraries/OneWire/OneWire.h \
- /Users/danilakardashevkii/Documents/Arduino/libraries/OneWire/util/OneWire_direct_regtype.h \
- /Users/danilakardashevkii/Documents/Arduino/libraries/DallasTemperature/DallasTemperature.h \
- /Users/danilakardashevkii/Documents/Arduino/libraries/DHT_sensor_library/DHT.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEDevice.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/include/esp32/include/esp_bt.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEServer.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEDevice.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEConnInfo.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEUUID.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/cores/esp32/WString.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_gatt_defs.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_bt_defs.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEAdvertising.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/RTOS.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/newlib/platform_include/pthread.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/esp_ringbuf/include/freertos/ringbuf.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEUtils.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEAddress.h \
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/include/esp32/include/esp_bt.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_gap_ble_api.h \
  /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_gattc_api.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_gatts_api.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLECharacteristic.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEDescriptor.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEValue.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEService.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLESecurity.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEClient.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLERemoteService.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLERemoteCharacteristic.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLERemoteDescriptor.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEAdvertisedDevice.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEScan.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEUtils.h \
- /Users/danilakardashevkii/Library/Arduino15/packages/esp32/hardware/esp32/3.3.0/libraries/BLE/src/BLEServer.h
+ /Users/danilakardashevkii/Library/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-b66b5448-v1/esp32/include/bt/host/bluedroid/api/include/api/esp_gatts_api.h

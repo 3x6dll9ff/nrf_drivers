@@ -45,6 +45,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 #include "nordic_common.h"
 #include "nrf.h"
 #include "app_error.h"
@@ -102,12 +103,18 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
-#define SENSOR_SERVICE_UUID_BASE        {0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x10, 0x32, 0x54, 0x76, 0x0F, 0xB0, 0x00, 0x00}
-#define SENSOR_SERVICE_UUID             0xA001
-#define SENSOR_CHAR_UUID                0xA002
+// Простой 16-битный кастомный сервис (если понадобится GATT в будущем)
+#define SENSOR_SERVICE_UUID             0xFFF0
+#define SENSOR_CHAR_UUID                0xFFF1
 #define SENSOR_PAYLOAD_LEN              10u
 #define SENSOR_PAYLOAD_MAX_LEN          20u
 #define BLE_CONN_MONITOR_DISABLED       1
+
+// Производитель и сканер для приема данных с ESP32 по рекламе
+#define ESP_MANUF_ID                    0x1234
+#define SCAN_INTERVAL                   0x00A0  /**< 100 ms. */
+#define SCAN_WINDOW                     0x0050  /**< 50 ms. */
+#define SCAN_TIMEOUT                    0       /**< No timeout. */
 
 typedef struct __attribute__((packed))
 {
@@ -138,8 +145,31 @@ static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   
 static uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
 static uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];         /**< Buffer for storing an encoded scan data. */
 
+// Буфер для сканирования рекламных пакетов ESP32
+static ble_gap_scan_params_t m_scan_params =
+{
+    .active        = 0x00,                       // пассивное сканирование
+    .interval      = SCAN_INTERVAL,
+    .window        = SCAN_WINDOW,
+    .filter_policy = BLE_GAP_SCAN_FP_ACCEPT_ALL,
+    .timeout       = SCAN_TIMEOUT,
+    .scan_phys     = BLE_GAP_PHY_1MBPS
+#if defined(S140) || defined(S132) || defined(S112)
+    ,
+    .extended      = 0
+#endif
+};
+
+static uint8_t m_scan_buffer_data[BLE_GAP_SCAN_BUFFER_MIN];
+static ble_data_t m_scan_buffer =
+{
+    .p_data = m_scan_buffer_data,
+    .len    = sizeof(m_scan_buffer_data)
+};
+
 static void sensor_service_init(void);
 static void sensor_payload_process(sensor_payload_t const * p_payload);
+static void scan_start(void);
 
 /**@brief Struct that contains pointers to the encoded advertising data. */
 static ble_gap_adv_data_t m_adv_data =
@@ -308,6 +338,27 @@ static void timers_init(void)
     NRF_LOG_FLUSH();
 }
 
+/**@brief Запуск пассивного сканирования рекламных пакетов (ESP32). */
+static void scan_start(void)
+{
+    ret_code_t err_code;
+
+    NRF_LOG_INFO("Starting BLE scan for ESP32 advertising...");
+    NRF_LOG_FLUSH();
+
+    err_code = sd_ble_gap_scan_start(&m_scan_params, &m_scan_buffer);
+    if (err_code != NRF_SUCCESS)
+    {
+        NRF_LOG_ERROR("scan_start error: 0x%08X", err_code);
+        NRF_LOG_FLUSH();
+    }
+    else
+    {
+        NRF_LOG_INFO("BLE scan started successfully");
+        NRF_LOG_FLUSH();
+    }
+}
+
 
 /**@brief Function for the GAP initialization.
  *
@@ -361,7 +412,7 @@ static void advertising_init(void)
 
     ble_uuid_t adv_uuids[] =
     {
-        {SENSOR_SERVICE_UUID, m_sensor_service.uuid_type}
+        {SENSOR_SERVICE_UUID, BLE_UUID_TYPE_BLE}
     };
 
     // Build and set advertising data.
@@ -513,20 +564,16 @@ static void conn_params_init(void)
 
 static void sensor_service_init(void)
 {
-    ret_code_t       err_code;
-    ble_uuid_t       service_uuid;
-    ble_uuid128_t    base_uuid = {SENSOR_SERVICE_UUID_BASE};
-    ble_uuid_t       char_uuid;
+    ret_code_t          err_code;
+    ble_uuid_t          service_uuid;
+    ble_uuid_t          char_uuid;
     ble_gatts_attr_md_t attr_md;
     ble_gatts_char_md_t char_md;
     ble_gatts_attr_t    attr_char_value;
     uint8_t             initial_value[SENSOR_PAYLOAD_LEN] = {0};
 
-    err_code = sd_ble_uuid_vs_add(&base_uuid, &m_sensor_service.uuid_type);
-    APP_ERROR_CHECK(err_code);
-    NRF_LOG_INFO("Sensor service uuid_type=%d", m_sensor_service.uuid_type);
-
-    service_uuid.type = m_sensor_service.uuid_type;
+    // 16-битный кастомный сервис 0xFFF0
+    service_uuid.type = BLE_UUID_TYPE_BLE;
     service_uuid.uuid = SENSOR_SERVICE_UUID;
 
     err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
@@ -544,7 +591,7 @@ static void sensor_service_init(void)
     attr_md.vloc = BLE_GATTS_VLOC_STACK;
     attr_md.vlen = 1;
 
-    char_uuid.type = m_sensor_service.uuid_type;
+    char_uuid.type = BLE_UUID_TYPE_BLE;
     char_uuid.uuid = SENSOR_CHAR_UUID;
 
     memset(&attr_char_value, 0, sizeof(attr_char_value));
@@ -561,17 +608,6 @@ static void sensor_service_init(void)
                                                &m_sensor_service.sensor_char_handles);
     APP_ERROR_CHECK(err_code);
 
-    ble_uuid_t encoded_uuid = {
-        .uuid = SENSOR_SERVICE_UUID,
-        .type = m_sensor_service.uuid_type
-    };
-    uint8_t uuid_bytes[16] = {0};
-    uint8_t uuid_len = sizeof(uuid_bytes);
-    err_code = sd_ble_uuid_encode(&encoded_uuid, &uuid_len, uuid_bytes);
-    APP_ERROR_CHECK(err_code);
-    NRF_LOG_INFO("Sensor service UUID (%u bytes)", uuid_len);
-    NRF_LOG_HEXDUMP_INFO(uuid_bytes, uuid_len);
-
     NRF_LOG_INFO("Sensor service ready (service_handle=%d, char_handle=%d)",
                  m_sensor_service.service_handle,
                  m_sensor_service.sensor_char_handles.value_handle);
@@ -585,17 +621,22 @@ static void sensor_payload_process(sensor_payload_t const * p_payload)
         return;
     }
 
-    float temp_inside  = (float)p_payload->temp_inside_cx100 / 100.0f;
-    float temp_outside = (float)p_payload->temp_outside_cx100 / 100.0f;
-    float hum_outside  = (float)p_payload->hum_outside_pctx100 / 100.0f;
+    // Преобразуем в читаемый формат (деление на 100 для температур и влажности)
+    int16_t ti_int = p_payload->temp_inside_cx100 / 100;
+    uint8_t ti_frac = abs(p_payload->temp_inside_cx100 % 100);
+    
+    int16_t to_int = p_payload->temp_outside_cx100 / 100;
+    uint8_t to_frac = abs(p_payload->temp_outside_cx100 % 100);
+    
+    uint16_t h_int = p_payload->hum_outside_pctx100 / 100;
+    uint8_t h_frac = p_payload->hum_outside_pctx100 % 100;
 
-    NRF_LOG_INFO("Sensor payload received:");
-    NRF_LOG_INFO("  Light:  %u", p_payload->light_raw);
-    NRF_LOG_INFO("  Water:  %u", p_payload->water_raw);
-    NRF_LOG_INFO("  TempIn: %.2f C", temp_inside);
-    NRF_LOG_INFO("  TempOut: %.2f C", temp_outside);
-    NRF_LOG_INFO("  HumOut: %.2f %%", hum_outside);
-    NRF_LOG_FLUSH();
+    NRF_LOG_INFO("=== Sensor Data ===");
+    NRF_LOG_INFO("Light: %u", p_payload->light_raw);
+    NRF_LOG_INFO("Water: %u", p_payload->water_raw);
+    NRF_LOG_INFO("Temp In: %d.%02u C", ti_int, ti_frac);
+    NRF_LOG_INFO("Temp Out: %d.%02u C", to_int, to_frac);
+    NRF_LOG_INFO("Humidity: %u.%02u %%", h_int, h_frac);
 }
 
 
@@ -671,6 +712,9 @@ static void advertising_start(void)
     NRF_LOG_FLUSH();
 
     bsp_board_led_on(ADVERTISING_LED);
+
+    // Параллельно запускаем сканирование для приема данных от ESP32
+    scan_start();
 }
 
 
@@ -832,6 +876,95 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             else
             {
                 NRF_LOG_DEBUG("Write to handle 0x%04X len=%u", p_evt_write->handle, p_evt_write->len);
+            }
+        } break;
+
+        case BLE_GAP_EVT_ADV_REPORT:
+        {
+            ble_gap_evt_adv_report_t const * p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
+            uint16_t len   = p_adv->data.len;
+            uint8_t const *data = p_adv->data.p_data;
+
+            // Фильтр: игнорируем слишком короткие пакеты (не содержат manufacturer data)
+            if (len < 10 || data == NULL)
+            {
+                // Продолжаем сканирование без логирования
+                ret_code_t err_code = sd_ble_gap_scan_start(NULL, &m_scan_buffer);
+                (void)err_code;
+                break;
+            }
+
+            uint16_t index = 0;
+            while (index < len)
+            {
+                uint8_t field_len = data[index];
+                if (field_len == 0)
+                {
+                    break;
+                }
+                if (index + field_len >= len + 1)
+                {
+                    break;
+                }
+
+                uint8_t ad_type = data[index + 1];
+
+                if (ad_type == BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA)
+                {
+                    // [len][type][company_id_lo][company_id_hi][ascii_payload...]
+                    uint8_t payload_len = field_len - 1;
+                    if (payload_len > 2)
+                    {
+                        uint8_t const *mdata = &data[index + 2];
+                        uint16_t company_id = mdata[0] | (mdata[1] << 8);
+
+                        if (company_id == ESP_MANUF_ID)
+                        {
+                            uint8_t txt_len = payload_len - 2;
+                            
+                            if (txt_len >= 5 && txt_len < 40)
+                            {
+                                char buf[40] = {0};
+                                memcpy(buf, &mdata[2], txt_len);
+                                buf[txt_len] = '\0';
+
+                                sensor_payload_t payload;
+                                memset(&payload, 0, sizeof(payload));
+
+                                int ti10 = 0, to10 = 0;
+                                int hum10 = 0;
+                                unsigned int light = 0, water = 0;
+
+                                int parsed = sscanf(buf, "%u,%u,%d,%d,%d",
+                                                    &light, &water, &ti10, &to10, &hum10);
+                                
+                                if (parsed == 5)
+                                {
+                                    payload.light_raw            = (uint16_t)light;
+                                    payload.water_raw            = (uint16_t)water;
+                                    payload.temp_inside_cx100    = (int16_t)(ti10 * 10);
+                                    payload.temp_outside_cx100   = (int16_t)(to10 * 10);
+                                    payload.hum_outside_pctx100  = (uint16_t)(hum10 * 10);
+                                    sensor_payload_process(&payload);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                index += field_len + 1;
+            }
+
+            // Продолжаем сканирование (SoftDevice ставит его на паузу)
+            if (p_adv->type.status != BLE_GAP_ADV_DATA_STATUS_INCOMPLETE_MORE_DATA)
+            {
+                err_code = sd_ble_gap_scan_start(NULL, &m_scan_buffer);
+                if (err_code != NRF_SUCCESS &&
+                    err_code != NRF_ERROR_INVALID_STATE)
+                {
+                    NRF_LOG_ERROR("scan_continue error: 0x%08X", err_code);
+                    NRF_LOG_FLUSH();
+                }
             }
         } break;
 
