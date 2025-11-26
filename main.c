@@ -48,6 +48,7 @@
 #include <stdio.h>
 #include "nordic_common.h"
 #include "nrf.h"
+#include "nrf_delay.h"
 #include "app_error.h"
 #include "ble.h"
 #include "ble_err.h"
@@ -80,6 +81,11 @@
 #define CONNECTED_LED                   BSP_BOARD_LED_1                         /**< Is on when device has connected. */
 #define LEDBUTTON_LED                   BSP_BOARD_LED_2                         /**< LED to be toggled with the help of the LED Button Service. */
 #define LEDBUTTON_BUTTON                BSP_BUTTON_0                            /**< Button that will trigger the notification event with the LED Button Service */
+
+// RGB LED пины
+#define RGB_RED_PIN     13
+#define RGB_GREEN_PIN   14
+#define RGB_BLUE_PIN    15
 
 #define DEVICE_NAME                     "Game_Score"                            /**< Name of device. Will be included in the advertising data. */
 
@@ -170,6 +176,8 @@ static ble_data_t m_scan_buffer =
 static void sensor_service_init(void);
 static void sensor_payload_process(sensor_payload_t const * p_payload);
 static void scan_start(void);
+static void rgb_init(void);
+static void rgb_set_color(bool red, bool green, bool blue);
 
 /**@brief Struct that contains pointers to the encoded advertising data. */
 static ble_gap_adv_data_t m_adv_data =
@@ -270,6 +278,31 @@ static void leds_init(void)
     bsp_board_init(BSP_INIT_LEDS);
 }
 
+/**@brief Инициализация RGB светодиода. */
+static void rgb_init(void)
+{
+    nrf_gpio_cfg_output(RGB_RED_PIN);
+    nrf_gpio_cfg_output(RGB_GREEN_PIN);
+    nrf_gpio_cfg_output(RGB_BLUE_PIN);
+    
+    // Выключаем все цвета (active high: 0 = выключен)
+    nrf_gpio_pin_clear(RGB_RED_PIN);
+    nrf_gpio_pin_clear(RGB_GREEN_PIN);
+    nrf_gpio_pin_clear(RGB_BLUE_PIN);
+}
+
+/**@brief Установка цвета RGB светодиода.
+ * @param red   true = красный включён
+ * @param green true = зелёный включён
+ * @param blue  true = синий включён
+ */
+static void rgb_set_color(bool red, bool green, bool blue)
+{
+    // HW-478: общий катод, active high (1 = включён, 0 = выключен)
+    nrf_gpio_pin_write(RGB_RED_PIN, red ? 1 : 0);
+    nrf_gpio_pin_write(RGB_GREEN_PIN, green ? 1 : 0);
+    nrf_gpio_pin_write(RGB_BLUE_PIN, blue ? 1 : 0);
+}
 
 // Define timer using APP_TIMER_DEF macro for app_timer v2
 APP_TIMER_DEF(m_conn_check_timer_id);
@@ -639,12 +672,103 @@ static void sensor_payload_process(sensor_payload_t const * p_payload)
     uint16_t h_int = p_payload->hum_outside_pctx100 / 100;
     uint8_t h_frac = p_payload->hum_outside_pctx100 % 100;
 
-    NRF_LOG_INFO("=== Sensor Data ===");
+    // Определяем день/ночь по освещённости
+    bool is_day = (p_payload->light_raw > 2000);
+    bool is_night = (p_payload->light_raw < 500);
+    const char* period = is_day ? "DAY" : (is_night ? "NIGHT" : "TWILIGHT");
+
+    NRF_LOG_INFO("=== Crested Gecko Monitor [%s] ===", period);
     NRF_LOG_INFO("Light: %u", p_payload->light_raw);
     NRF_LOG_INFO("Water: %u", p_payload->water_raw);
-    NRF_LOG_INFO("Temp In: %d.%02u C", ti_int, ti_frac);
-    NRF_LOG_INFO("Temp Out: %d.%02u C", to_int, to_frac);
+    NRF_LOG_INFO("Temp Substrate: %d.%02u C", ti_int, ti_frac);
+    NRF_LOG_INFO("Temp Air: %d.%02u C", to_int, to_frac);
     NRF_LOG_INFO("Humidity: %u.%02u %%", h_int, h_frac);
+
+    // Анализ данных и установка цвета RGB для Crested Gecko
+    bool critical = false;
+    bool warning = false;
+
+    // Критические условия (красный):
+    // 1. Температура воздуха (outside) критична
+    if (to_int < 15 || to_int > 28)
+    {
+        critical = true;
+    }
+    
+    // 2. Температура субстрата (inside) критична
+    if (ti_int < 16 || ti_int > 28)
+    {
+        critical = true;
+    }
+    
+    // 3. Влажность критична
+    if (h_int < 40 || h_int > 85)
+    {
+        critical = true;
+    }
+    
+    // 4. Очень сухо (нужно срочно прскать)
+    if (p_payload->water_raw < 100)  // Примерно < 30% от макс значения ~4095
+    {
+        critical = true;
+    }
+
+    // Предупреждение (жёлтый):
+    if (!critical)
+    {
+        // День: температура воздуха вне оптимума 22-26°C
+        if (is_day && (to_int < 22 || to_int > 26))
+        {
+            warning = true;
+        }
+        
+        // Ночь: температура воздуха вне оптимума 18-22°C
+        if (is_night && (to_int < 18 || to_int > 22))
+        {
+            warning = true;
+        }
+        
+        // Температура субстрата вне идеала 20-25°C
+        if (ti_int < 20 || ti_int > 25)
+        {
+            warning = true;
+        }
+        
+        // День: влажность вне оптимума 50-70%
+        if (is_day && (h_int < 50 || h_int > 70))
+        {
+            warning = true;
+        }
+        
+        // Ночь: влажность вне оптимума 65-80%
+        if (is_night && (h_int < 65 || h_int > 80))
+        {
+            warning = true;
+        }
+        
+        // Сухо, нужно прскать (water < 30%)
+        if (p_payload->water_raw < 1200)  // Примерно < 30% от макс ~4095
+        {
+            warning = true;
+        }
+    }
+
+    // Установка цвета
+    if (critical)
+    {
+        rgb_set_color(true, false, false);  // Красный
+        NRF_LOG_WARNING("Status: CRITICAL");
+    }
+    else if (warning)
+    {
+        rgb_set_color(true, true, false);   // Жёлтый (красный + зелёный)
+        NRF_LOG_WARNING("Status: WARNING");
+    }
+    else
+    {
+        rgb_set_color(false, true, false);  // Зелёный
+        NRF_LOG_INFO("Status: OK");
+    }
 }
 
 
@@ -1097,6 +1221,7 @@ int main(void)
     // Initialize.
     log_init();
     leds_init();
+    rgb_init();
     timers_init();
     buttons_init();
     power_management_init();
@@ -1109,6 +1234,27 @@ int main(void)
 
     // Start execution.
     NRF_LOG_INFO("Game_Score BLE device started.");
+    
+    // Тест RGB: красный -> зелёный -> синий -> выключен
+    NRF_LOG_INFO("RGB test: RED");
+    rgb_set_color(true, false, false);
+    nrf_delay_ms(500);
+    
+    NRF_LOG_INFO("RGB test: GREEN");
+    rgb_set_color(false, true, false);
+    nrf_delay_ms(500);
+    
+    NRF_LOG_INFO("RGB test: BLUE");
+    rgb_set_color(false, false, true);
+    nrf_delay_ms(500);
+    
+    NRF_LOG_INFO("RGB test: OFF");
+    rgb_set_color(false, false, false);
+    nrf_delay_ms(500);
+    
+    // Синий цвет = система запущена и готова
+    rgb_set_color(false, false, true);
+    
     advertising_start();
 
     // Enter main loop.
