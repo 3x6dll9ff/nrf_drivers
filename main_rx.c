@@ -1,75 +1,12 @@
 #include "radio_config.h"
+#include "third_party/external/segger_rtt/SEGGER_RTT.h"
+
+// ========== RTT DEBUG OUTPUT ==========
+#define LOG(msg) SEGGER_RTT_WriteString(0, msg)
+#define LOG_INT(val) SEGGER_RTT_printf(0, "%d", val)
+#define LOG_UINT(val) SEGGER_RTT_printf(0, "%u", val)
 
 static packet_t rx_packet;
-
-// ========== UTILITIES ==========
-void uint_to_str(uint32_t val, char *buf) {
-  if (val == 0) {
-    buf[0] = '0';
-    buf[1] = '\0';
-    return;
-  }
-
-  char tmp[12];
-  int i = 0;
-  while (val > 0) {
-    tmp[i++] = '0' + (val % 10);
-    val /= 10;
-  }
-  while (i > 0) {
-    *buf++ = tmp[--i];
-  }
-  *buf = '\0';
-}
-
-void int_to_str(int val, char *buf) {
-  if (val < 0) {
-    *buf++ = '-';
-    val = -val;
-  }
-  char tmp[12];
-  uint_to_str(val, tmp);
-  char *p = tmp;
-  while (*p)
-    *buf++ = *p++;
-  *buf = '\0';
-}
-
-// ========== UART ==========
-void uart_init(void) {
-  G_PIN_CNF(UART_TX_PIN) = 1;
-  UART_PSELTXD = UART_TX_PIN;
-  UART_BAUDRATE = 0x01D7E000;
-  UART_ENABLE = 4;
-}
-
-void uart_putc(char c) {
-  UART_EVENT_TXDRDY = 0;
-  UART_TXD = c;
-  UART_STARTTX = 1;
-  while (!UART_EVENT_TXDRDY)
-    ;
-}
-
-void uart_puts(const char *str) {
-  while (*str) {
-    if (*str == '\n')
-      uart_putc('\r');
-    uart_putc(*str++);
-  }
-}
-
-void uart_print_uint(uint32_t val) {
-  char buf[12];
-  uint_to_str(val, buf);
-  uart_puts(buf);
-}
-
-void uart_print_int(int val) {
-  char buf[12];
-  int_to_str(val, buf);
-  uart_puts(buf);
-}
 
 // ========== GPIO ==========
 void gpio_init(void) {
@@ -125,10 +62,13 @@ void radio_rx_start(void) {
 
 uint8_t radio_rx_check(void) {
   if (R_EVENT_END) {
+    LOG("[DEBUG] Packet received! ");
     R_EVENT_END = 0;
     if (R_CRCSTATUS == 1) {
+      LOG("CRC OK\n");
       return 1;
     }
+    LOG("CRC FAILED\n");
     // If CRC failed, restart immediately
     R_TASKS_START = 1; // Or just re-trigger RXEN if disabled?
     // If SHORTS END_DISABLE is set, radio is now DISABLED.
@@ -147,41 +87,41 @@ void analyze_data(packet_t *pkt) {
   uint8_t is_day = (pkt->light > 2000);
   uint8_t is_night = (pkt->light < 500);
 
-  uart_puts("\n=== GECKO MONITOR ===\n");
+  LOG("\n=== GECKO MONITOR ===\n");
 
-  uart_puts("Light: ");
-  uart_print_uint(pkt->light);
-  uart_puts("\n");
+  LOG("Light: ");
+  LOG_UINT(pkt->light);
+  LOG("\n");
 
-  uart_puts("Water: ");
-  uart_print_uint(pkt->water);
-  uart_puts("\n");
+  LOG("Water: ");
+  LOG_UINT(pkt->water);
+  LOG("\n");
 
-  uart_puts("Temp Substrate: ");
-  uart_print_int(temp_sub);
-  uart_puts(".");
-  uart_print_uint(pkt->temp_substrate % 10);
-  uart_puts(" C\n");
+  LOG("Temp Substrate: ");
+  LOG_INT(temp_sub);
+  LOG(".");
+  LOG_UINT(pkt->temp_substrate % 10);
+  LOG(" C\n");
 
-  uart_puts("Temp Air: ");
-  uart_print_int(temp_air);
-  uart_puts(".");
-  uart_print_uint(pkt->temp_air % 10);
-  uart_puts(" C\n");
+  LOG("Temp Air: ");
+  LOG_INT(temp_air);
+  LOG(".");
+  LOG_UINT(pkt->temp_air % 10);
+  LOG(" C\n");
 
-  uart_puts("Humidity: ");
-  uart_print_uint(hum);
-  uart_puts(".");
-  uart_print_uint(pkt->humidity % 10);
-  uart_puts(" %\n");
+  LOG("Humidity: ");
+  LOG_UINT(hum);
+  LOG(".");
+  LOG_UINT(pkt->humidity % 10);
+  LOG(" %\n");
 
-  uart_puts("Period: ");
+  LOG("Period: ");
   if (is_day)
-    uart_puts("DAY\n");
+    LOG("DAY\n");
   else if (is_night)
-    uart_puts("NIGHT\n");
+    LOG("NIGHT\n");
   else
-    uart_puts("TWILIGHT\n");
+    LOG("TWILIGHT\n");
 
   // Anomaly detection
   uint8_t critical = 0;
@@ -215,30 +155,30 @@ void analyze_data(packet_t *pkt) {
   if (critical) {
     rgb_set(1, 0, 0);       // RED
     G_OUTSET = (1 << LED4); // LED4 ON (error)
-    uart_puts("STATUS: CRITICAL\n");
+    LOG("STATUS: CRITICAL\n");
   } else if (warning) {
     rgb_set(1, 1, 0);       // YELLOW
     G_OUTCLR = (1 << LED4); // LED4 OFF
-    uart_puts("STATUS: WARNING\n");
+    LOG("STATUS: WARNING\n");
   } else {
     rgb_set(0, 1, 0);       // GREEN
     G_OUTCLR = (1 << LED4); // LED4 OFF
-    uart_puts("STATUS: OK\n");
+    LOG("STATUS: OK\n");
   }
-  uart_puts("=====================\n");
+  LOG("=====================\n");
 }
 
 // ========== MAIN ==========
 int main(void) {
   gpio_init();
-  uart_init();
+  SEGGER_RTT_Init();
   radio_init();
 
-  uart_puts("\n\n================================\n");
-  uart_puts("  BARE METAL GECKO RECEIVER\n");
-  uart_puts("  RGB: P0.13/14/15 | LED4: Error\n");
-  uart_puts("  Waiting for sensor data...\n");
-  uart_puts("================================\n\n");
+  LOG("\n\n================================\n");
+  LOG("  BARE METAL GECKO RECEIVER\n");
+  LOG("  RGB: P0.13/14/15 | LED4: Error\n");
+  LOG("  Waiting for sensor data...\n");
+  LOG("================================\n\n");
 
   // Startup RGB test
   rgb_set(1, 0, 0); // RED
@@ -257,6 +197,7 @@ int main(void) {
   radio_rx_start();
 
   uint32_t packet_count = 0;
+  uint32_t heartbeat_counter = 0;
 
   // Set Blue ON (Waiting state)
   rgb_set(0, 0, 1);
@@ -269,9 +210,9 @@ int main(void) {
       rgb_set(0, 1, 0); // Green
       delay_ms(100);    // Short blink
 
-      uart_puts("\n[Packet #");
-      uart_print_uint(packet_count);
-      uart_puts(" received]\n");
+      LOG("\n[Packet #");
+      LOG_UINT(packet_count);
+      LOG(" received]\n");
 
       analyze_data(&rx_packet);
 
@@ -283,5 +224,12 @@ int main(void) {
     }
 
     delay_ms(10);
+
+    // Heartbeat every 10 seconds (1000 * 10ms)
+    heartbeat_counter++;
+    if (heartbeat_counter >= 1000) {
+      LOG(".");
+      heartbeat_counter = 0;
+    }
   }
 }
