@@ -1,6 +1,7 @@
 #include "SEGGER_RTT.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <limits.h>
 #include "nrf.h"
 #include "radio_config.h"
 
@@ -9,7 +10,7 @@
 #define LOG_ERROR(...) SEGGER_RTT_printf(0, "[ERROR] " __VA_ARGS__); SEGGER_RTT_printf(0, "\r\n")
 #define LOG_DEBUG(...) SEGGER_RTT_printf(0, "[DEBUG] " __VA_ARGS__); SEGGER_RTT_printf(0, "\r\n")
 
-// Радио (должно совпадать с передатчиком - точно как в artem)
+// Радио (должно совпадать с передатчиком)
 #define RADIO_CHANNEL       10
 #define RADIO_PAYLOAD_LEN   sizeof(packet_t)
 #define RADIO_PDU_LEN       (2 + RADIO_PAYLOAD_LEN)
@@ -96,7 +97,7 @@ static void radio_init(void) {
     NVIC_SetPriority(RADIO_IRQn, 1);
     NVIC_EnableIRQ(RADIO_IRQn);
     
-    LOG_INFO("Radio RX configured like artem (ch=%d)", RADIO_CHANNEL);
+    LOG_INFO("Radio RX configured (ch=%d)", RADIO_CHANNEL);
 }
 
 static void radio_start_rx(void) {
@@ -152,43 +153,10 @@ int main(void) {
     radio_init();
     
     radio_start_rx();
-    LOG_INFO("RX started");
     
     uint32_t packet_count = 0;
-    uint32_t crc_error_count = 0;
-    uint32_t address_match_count = 0;
-    uint32_t loop_count = 0;
-    uint32_t last_address_match_logged = 0;
-    uint32_t last_crc_error_logged = 0;
-    
-    LOG_INFO("Listening for packets...");
     
     while (1) {
-        loop_count++;
-        
-        uint32_t current_address_matches = radio_address_matches;
-        uint32_t current_crc_errors = radio_crc_errors_isr;
-
-        if (current_address_matches != last_address_match_logged) {
-            if (current_address_matches <= 3) {
-                LOG_INFO(">>> ADDRESS MATCHED! (total: %d) <<<", current_address_matches);
-            }
-            last_address_match_logged = current_address_matches;
-        }
-
-        if (current_crc_errors != last_crc_error_logged) {
-            if (current_crc_errors <= 5 || (current_crc_errors % 50 == 0)) {
-                LOG_ERROR("CRC error (total: %d)", current_crc_errors);
-            }
-            last_crc_error_logged = current_crc_errors;
-        }
-
-        if (loop_count % 50000 == 0) {
-            address_match_count = current_address_matches;
-            crc_error_count = current_crc_errors;
-            LOG_INFO("Status: packets=%d, addr_match=%d, crc_errors=%d", 
-                     packet_count, address_match_count, crc_error_count);
-        }
 
         if (radio_packet_ready) {
             __disable_irq();
@@ -202,17 +170,31 @@ int main(void) {
             GPIO_OUTCLR = (1UL << LED_BLUE_PIN);
             GPIO_OUTSET = (1UL << LED_GREEN_PIN);
 
-            // Выводим данные сенсоров
-            LOG_INFO("RX #%d: Light=%u Water=%u Tsub=%d.%d Tair=%d.%d Hum=%u.%u",
-                     packet_count,
-                     pkt.light,
-                     pkt.water,
-                     pkt.temp_substrate / 10,
-                     pkt.temp_substrate % 10,
-                     pkt.temp_air / 10,
-                     pkt.temp_air % 10,
-                     pkt.humidity / 10,
-                     pkt.humidity % 10);
+            // Output data in readable format
+            LOG_INFO("=== RX Packet #%d ===", packet_count);
+            LOG_INFO("Water: %u", pkt.water);
+            LOG_INFO("Light: %u", pkt.light);
+            
+            if (pkt.temp_substrate != INT16_MIN) {
+                LOG_INFO("Substrate temperature: %d.%d°C", 
+                         pkt.temp_substrate / 10, pkt.temp_substrate % 10);
+            } else {
+                LOG_INFO("Substrate temperature: ERROR");
+            }
+            
+            if (pkt.temp_air != INT16_MIN) {
+                LOG_INFO("Air temperature: %d.%d°C", 
+                         pkt.temp_air / 10, pkt.temp_air % 10);
+            } else {
+                LOG_INFO("Air temperature: ERROR");
+            }
+            
+            if (pkt.humidity != UINT16_MAX) {
+                LOG_INFO("Humidity: %u.%u%%", 
+                         pkt.humidity / 10, pkt.humidity % 10);
+            } else {
+                LOG_INFO("Humidity: ERROR");
+            }
             
             // Задержка 1 секунда с зеленым LED
             for (volatile uint32_t i = 0; i < 1000000; i++) {

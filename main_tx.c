@@ -9,8 +9,8 @@
 #define LOG_INFO(...)  SEGGER_RTT_printf(0, "[INFO] " __VA_ARGS__); SEGGER_RTT_printf(0, "\r\n")
 #define LOG_ERROR(...) SEGGER_RTT_printf(0, "[ERROR] " __VA_ARGS__); SEGGER_RTT_printf(0, "\r\n")
 
-// Радио (точно как в artem)
-// RADIO_CHANNEL определен в radio_config.h, переопределяем для artem
+// Радио
+// RADIO_CHANNEL определен в radio_config.h, переопределяем
 #undef RADIO_CHANNEL
 #define RADIO_CHANNEL       10
 #define RADIO_PAYLOAD_LEN   sizeof(packet_t)
@@ -75,7 +75,7 @@ static void saadc_init(void) {
     SAADC_RESULT_PTR = (uint32_t)adc_result;
     SAADC_RESULT_MAXCNT = 1;
     
-    LOG_INFO("SAADC initialized (12-bit, 0-4095)");
+    // SAADC initialized
 }
 
 static uint16_t read_adc_channel(uint8_t channel) {
@@ -114,7 +114,7 @@ static uint16_t read_adc_channel(uint8_t channel) {
     // Читаем результат (12-bit: 0-4095)
     int16_t raw_value = adc_result[0];
     
-    LOG_INFO("ADC ch%d: raw=%d (0x%04X)", channel, raw_value, (uint16_t)raw_value);
+           // Логирование убрано для чистоты вывода
     
     // Конвертируем в положительное значение (0-4095 для 12-bit)
     if (raw_value < 0) {
@@ -130,10 +130,10 @@ static uint16_t read_adc(uint8_t pin) {
     uint16_t value = 0;
     if (pin == LIGHT_ADC_PIN) {
         value = read_adc_channel(0);
-        LOG_INFO("Light sensor (P0.02): %u", value);
+        // Логирование убрано
     } else if (pin == WATER_ADC_PIN) {
         value = read_adc_channel(1);
-        LOG_INFO("Water sensor (P0.03): %u", value);
+        // Логирование убрано
     }
     return value;
 }
@@ -299,7 +299,7 @@ static bool onewire_reset(uint8_t pin) {
     // Включаем прерывания обратно
     __enable_irq();
     
-    LOG_INFO("OneWire reset: pin_state=%u, presence=%u", pin_state, presence);
+    // Логирование убрано
     return presence;
 }
 
@@ -343,16 +343,7 @@ static int16_t read_temp_substrate(void) {
         delay_us(10);  // Небольшая задержка между байтами
     }
     
-    // Логируем биты первого байта для отладки (компактно)
-    if (data[0] == 0 && data[1] == 0) {
-        LOG_INFO("DS18B20 byte[0] bits (LSB first): %d%d%d%d%d%d%d%d",
-                 (data[0] >> 0) & 1, (data[0] >> 1) & 1, (data[0] >> 2) & 1, (data[0] >> 3) & 1,
-                 (data[0] >> 4) & 1, (data[0] >> 5) & 1, (data[0] >> 6) & 1, (data[0] >> 7) & 1);
-    }
-    
-    // Логируем сырые данные
-    LOG_INFO("DS18B20 raw data: %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-             data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8]);
+    // Логирование убрано
     
     // Проверка CRC (упрощенная - проверяем только что не все 0xFF)
     if (data[0] == 0xFF && data[1] == 0xFF) {
@@ -365,8 +356,7 @@ static int16_t read_temp_substrate(void) {
     // Конвертируем в градусы * 10 (например, 23.5°C = 235)
     int16_t temp_cx10 = (raw_temp * 10) / 16;  // DS18B20: 0.0625°C per bit
     
-    LOG_INFO("DS18B20 (P0.%02d): %d.%d°C (raw=0x%04X)", 
-             pin, temp_cx10 / 10, temp_cx10 % 10, raw_temp);
+    // Логирование убрано
     
     return temp_cx10;
 }
@@ -447,8 +437,7 @@ static bool dht22_read(uint8_t pin, uint16_t *humidity, int16_t *temperature) {
     }
     
     // Логируем сырые данные
-    LOG_INFO("DHT22 raw data: %02X %02X %02X %02X %02X",
-             data[0], data[1], data[2], data[3], data[4]);
+    // Логирование убрано
     
     // 4. Проверка CRC (как в старом коде)
     uint8_t crc = (data[0] + data[1] + data[2] + data[3]) & 0xFF;
@@ -525,8 +514,7 @@ static int16_t read_temp_air(void) {
     int16_t temp;
     
     if (dht22_read_cached(&hum, &temp)) {
-        LOG_INFO("DHT22 (P0.05): Temp=%d.%d°C, Hum=%u.%u%%", 
-                 temp / 10, temp % 10, hum / 10, hum % 10);
+        // Логирование убрано
         return temp;
     }
     
@@ -548,7 +536,7 @@ static uint16_t read_humidity(void) {
 // ========== РАДИО ==========
 
 static void radio_init(void) {
-    // Запускаем высокочастотный генератор как в artem
+    // Запускаем высокочастотный генератор
     NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
     NRF_CLOCK->TASKS_HFCLKSTART = 1;
     while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0) {}
@@ -591,41 +579,17 @@ static void radio_init(void) {
     NVIC_SetPriority(RADIO_IRQn, 1);
     NVIC_EnableIRQ(RADIO_IRQn);
     
-    LOG_INFO("Radio configured like artem (channel %d)", RADIO_CHANNEL);
+    LOG_INFO("Radio configured (channel %d)", RADIO_CHANNEL);
 }
 
 static void prepare_payload(packet_t *packet) {
-    LOG_INFO("--- Reading sensors ---");
-    
     // Читаем данные сенсоров
     packet->len = sizeof(packet_t) - 1; // длина без поля len
-    
-    LOG_INFO("Reading Light sensor...");
     packet->light = read_adc(LIGHT_ADC_PIN);
-    
-    LOG_INFO("Reading Water sensor...");
     packet->water = read_adc(WATER_ADC_PIN);
-    
-    LOG_INFO("Reading DS18B20...");
     packet->temp_substrate = read_temp_substrate();
-    
-    LOG_INFO("Reading DHT22...");
     packet->temp_air = read_temp_air();
     packet->humidity = read_humidity();
-    
-    // Сводка всех данных
-    LOG_INFO("Sensor summary: L=%u W=%u Tsub=%s%d.%d Tair=%s%d.%d H=%s%u.%u",
-             packet->light,
-             packet->water,
-             (packet->temp_substrate == INT16_MIN) ? "ERR " : "",
-             (packet->temp_substrate == INT16_MIN) ? 0 : packet->temp_substrate / 10,
-             (packet->temp_substrate == INT16_MIN) ? 0 : packet->temp_substrate % 10,
-             (packet->temp_air == INT16_MIN) ? "ERR " : "",
-             (packet->temp_air == INT16_MIN) ? 0 : packet->temp_air / 10,
-             (packet->temp_air == INT16_MIN) ? 0 : packet->temp_air % 10,
-             (packet->humidity == UINT16_MAX) ? "ERR " : "",
-             (packet->humidity == UINT16_MAX) ? 0 : packet->humidity / 10,
-             (packet->humidity == UINT16_MAX) ? 0 : packet->humidity % 10);
     
     // Упаковываем в PDU
     pdu[0] = 0x00;
@@ -702,7 +666,7 @@ int main(void) {
     saadc_init();
     radio_init();
     
-    LOG_INFO("Sensors: Light=P0.02, Water=P0.03, DS18B20=P0.06, DHT22=P0.05");
+    // Sensors initialized
     
     uint32_t packet_count = 0;
     packet_t sensor_packet;
@@ -713,13 +677,37 @@ int main(void) {
         prepare_payload(&sensor_packet);
         
         if (radio_send_packet()) {
-            LOG_INFO("Packet #%d sent successfully", packet_count);
+            // Output data in readable format
+            LOG_INFO("=== TX Packet #%d ===", packet_count);
+            LOG_INFO("Water: %u", sensor_packet.water);
+            LOG_INFO("Light: %u", sensor_packet.light);
+            
+            if (sensor_packet.temp_substrate != INT16_MIN) {
+                LOG_INFO("Substrate temperature: %d.%d°C", 
+                         sensor_packet.temp_substrate / 10, sensor_packet.temp_substrate % 10);
+            } else {
+                LOG_INFO("Substrate temperature: ERROR");
+            }
+            
+            if (sensor_packet.temp_air != INT16_MIN) {
+                LOG_INFO("Air temperature: %d.%d°C", 
+                         sensor_packet.temp_air / 10, sensor_packet.temp_air % 10);
+            } else {
+                LOG_INFO("Air temperature: ERROR");
+            }
+            
+            if (sensor_packet.humidity != UINT16_MAX) {
+                LOG_INFO("Humidity: %u.%u%%", 
+                         sensor_packet.humidity / 10, sensor_packet.humidity % 10);
+            } else {
+                LOG_INFO("Humidity: ERROR");
+            }
         } else {
             LOG_ERROR("Packet #%d send failed", packet_count);
         }
         
-        // Задержка 10 секунд
-        for (volatile uint32_t i = 0; i < 10000000; i++) {
+        // Задержка 15 секунд
+        for (volatile uint32_t i = 0; i < 15000000; i++) {
             __NOP();
         }
     }
