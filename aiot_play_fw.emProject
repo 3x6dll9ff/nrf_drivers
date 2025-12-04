@@ -94,6 +94,7 @@
       <file file_name="third_party/nRF5_SDK_17.1.0_ddde560/modules/nrfx/drivers/src/nrfx_uarte.c" />
     </folder>
     <folder Name="Application">
+      <file file_name="main.c" />
       <file file_name="Game_Score/Game_Score.c" />
       <file file_name="Game_Score/config/sdk_config.h" />
     </folder>

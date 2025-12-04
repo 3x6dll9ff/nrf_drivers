@@ -1,235 +1,234 @@
+#include "SEGGER_RTT.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "nrf.h"
 #include "radio_config.h"
-#include "third_party/external/segger_rtt/SEGGER_RTT.h"
 
-// ========== RTT DEBUG OUTPUT ==========
-#define LOG(msg) SEGGER_RTT_WriteString(0, msg)
-#define LOG_INT(val) SEGGER_RTT_printf(0, "%d", val)
-#define LOG_UINT(val) SEGGER_RTT_printf(0, "%u", val)
+// Макросы логирования
+#define LOG_INFO(...)  SEGGER_RTT_printf(0, "[INFO] " __VA_ARGS__); SEGGER_RTT_printf(0, "\r\n")
+#define LOG_ERROR(...) SEGGER_RTT_printf(0, "[ERROR] " __VA_ARGS__); SEGGER_RTT_printf(0, "\r\n")
+#define LOG_DEBUG(...) SEGGER_RTT_printf(0, "[DEBUG] " __VA_ARGS__); SEGGER_RTT_printf(0, "\r\n")
+
+// Радио (должно совпадать с передатчиком - точно как в artem)
+#define RADIO_CHANNEL       10
+#define RADIO_PAYLOAD_LEN   sizeof(packet_t)
+#define RADIO_PDU_LEN       (2 + RADIO_PAYLOAD_LEN)
+
+static uint8_t rx_pdu[RADIO_PDU_LEN];
+
+static volatile bool radio_packet_ready = false;
+static volatile uint32_t radio_address_matches = 0;
+static volatile uint32_t radio_crc_errors_isr = 0;
 
 static packet_t rx_packet;
 
-// ========== GPIO ==========
-void gpio_init(void) {
-  G_PIN_CNF(RGB_RED) = 1;   // Output
-  G_PIN_CNF(RGB_GREEN) = 1; // Output
-  G_PIN_CNF(RGB_BLUE) = 1;  // Output
-  G_PIN_CNF(LED4) = 1;      // Output
+// ========== GPIO/LED ==========
+#define LED_BLUE_PIN  15  // P0.15
+#define LED_GREEN_PIN 14  // P0.14
 
-  // Turn off all LEDs
-  G_OUTCLR = (1 << RGB_RED) | (1 << RGB_GREEN) | (1 << RGB_BLUE) | (1 << LED4);
+// Используем прямую работу с регистрами GPIO через указатели
+#define GPIO_BASE      0x50000000UL
+#define GPIO_OUTSET    (*(volatile uint32_t *)(GPIO_BASE + 0x508))
+#define GPIO_OUTCLR    (*(volatile uint32_t *)(GPIO_BASE + 0x50C))
+#define GPIO_PIN_CNF(n) (*(volatile uint32_t *)(GPIO_BASE + 0x700 + (n) * 4))
+
+static void led_init(void) {
+    // Настройка пинов как выходы
+    GPIO_PIN_CNF(LED_BLUE_PIN) = (1 << 0);  // DIR = Output
+    GPIO_PIN_CNF(LED_GREEN_PIN) = (1 << 0); // DIR = Output
+    
+    // Выключить все LED
+    GPIO_OUTCLR = (1UL << LED_BLUE_PIN) | (1UL << LED_GREEN_PIN);
 }
 
-void rgb_set(uint8_t red, uint8_t green, uint8_t blue) {
-  if (red)
-    G_OUTSET = (1 << RGB_RED);
-  else
-    G_OUTCLR = (1 << RGB_RED);
-
-  if (green)
-    G_OUTSET = (1 << RGB_GREEN);
-  else
-    G_OUTCLR = (1 << RGB_GREEN);
-
-  if (blue)
-    G_OUTSET = (1 << RGB_BLUE);
-  else
-    G_OUTCLR = (1 << RGB_BLUE);
+static void led_set_blue(void) {
+    GPIO_OUTCLR = (1UL << LED_GREEN_PIN);
+    GPIO_OUTSET = (1UL << LED_BLUE_PIN);
 }
 
-// ========== RADIO ==========
-void radio_init(void) {
-  R_MODE = 1;
-  R_FREQ = RADIO_CHANNEL;
-  R_TXPOWER = 0;
-  R_PCNF0 = (8 << 0); // LFLEN=8 bits (must match TX!)
-  R_PCNF1 = (sizeof(packet_t) << 0) | (3 << 16);
-  R_BASE0 = RADIO_ADDR;
-  R_PREFIX0 = 0;
-
-  // CRC configuration: 16-bit CRC (must match TX!)
-  R_CRCCNF = 2;       // CRC length: 2 bytes (16-bit)
-  R_CRCINIT = 0xFFFF; // Initial value
-
-  R_RXADDRESSES = 1; // Enable logical address 0 for RX
-  R_SHORTS = (1 << 0) | (1 << 1);
+static void led_set_green(void) {
+    GPIO_OUTCLR = (1UL << LED_BLUE_PIN);
+    GPIO_OUTSET = (1UL << LED_GREEN_PIN);
 }
 
-void radio_rx_start(void) {
-  R_PACKETPTR = (uint32_t)&rx_packet;
-  R_EVENT_END = 0;
-  R_RXEN = 1; // Trigger RXEN task
+// ========== РАДИО ==========
+
+static void radio_init(void) {
+    NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
+    NRF_CLOCK->TASKS_HFCLKSTART = 1;
+    while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0) {}
+    
+    NRF_RADIO->MODE    = (RADIO_MODE_MODE_Ble_LR125Kbit << RADIO_MODE_MODE_Pos);
+    NRF_RADIO->TXPOWER = (RADIO_TXPOWER_TXPOWER_0dBm << RADIO_TXPOWER_TXPOWER_Pos);
+    
+    NRF_RADIO->PCNF0 = (8 << RADIO_PCNF0_LFLEN_Pos) |
+                       (1 << RADIO_PCNF0_S0LEN_Pos) |
+                       (0 << RADIO_PCNF0_S1LEN_Pos) |
+                       (2 << RADIO_PCNF0_CILEN_Pos) |
+                       (RADIO_PCNF0_PLEN_LongRange << RADIO_PCNF0_PLEN_Pos) |
+                       (3 << RADIO_PCNF0_TERMLEN_Pos);
+    
+    NRF_RADIO->PCNF1 = (RADIO_PDU_LEN << RADIO_PCNF1_MAXLEN_Pos) |
+                       (0 << RADIO_PCNF1_STATLEN_Pos) |
+                       (3 << RADIO_PCNF1_BALEN_Pos) |
+                       (RADIO_PCNF1_ENDIAN_Little << RADIO_PCNF1_ENDIAN_Pos) |
+                       (RADIO_PCNF1_WHITEEN_Disabled << RADIO_PCNF1_WHITEEN_Pos);
+    
+    NRF_RADIO->BASE0 = 0xAAAAAAAAUL;
+    NRF_RADIO->PREFIX0 = 0;
+    NRF_RADIO->RXADDRESSES = RADIO_RXADDRESSES_ADDR0_Msk;
+    
+    NRF_RADIO->CRCCNF = (RADIO_CRCCNF_LEN_Three << RADIO_CRCCNF_LEN_Pos) |
+                        (RADIO_CRCCNF_SKIPADDR_Skip << RADIO_CRCCNF_SKIPADDR_Pos);
+    NRF_RADIO->CRCINIT = 0xFFFFUL;
+    NRF_RADIO->CRCPOLY = 0x00065B;
+    
+    NRF_RADIO->FREQUENCY = RADIO_CHANNEL;
+    NRF_RADIO->PACKETPTR = (uint32_t)rx_pdu;
+    
+    NRF_RADIO->SHORTS = (RADIO_SHORTS_READY_START_Msk |
+                         RADIO_SHORTS_END_DISABLE_Msk);
+
+    NRF_RADIO->INTENSET = (RADIO_INTENSET_ADDRESS_Msk |
+                           RADIO_INTENSET_END_Msk |
+                           RADIO_INTENSET_DISABLED_Msk);
+    NVIC_ClearPendingIRQ(RADIO_IRQn);
+    NVIC_SetPriority(RADIO_IRQn, 1);
+    NVIC_EnableIRQ(RADIO_IRQn);
+    
+    LOG_INFO("Radio RX configured like artem (ch=%d)", RADIO_CHANNEL);
 }
 
-uint8_t radio_rx_check(void) {
-  if (R_EVENT_END) {
-    LOG("[DEBUG] Packet received! ");
-    R_EVENT_END = 0;
-    if (R_CRCSTATUS == 1) {
-      LOG("CRC OK\n");
-      return 1;
+static void radio_start_rx(void) {
+    NRF_RADIO->PACKETPTR = (uint32_t)rx_pdu;
+    NRF_RADIO->EVENTS_ADDRESS = 0;
+    NRF_RADIO->EVENTS_END = 0;
+    NRF_RADIO->EVENTS_DISABLED = 0;
+    NRF_RADIO->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+}
+
+static void radio_handle_packet_from_isr(void) {
+    // Копируем данные из PDU в структуру пакета
+    uint8_t *pkt_bytes = (uint8_t *)&rx_packet;
+    for (uint8_t i = 0; i < RADIO_PAYLOAD_LEN; i++) {
+        pkt_bytes[i] = rx_pdu[2 + i];
     }
-    LOG("CRC FAILED\n");
-    // If CRC failed, restart immediately
-    R_TASKS_START = 1; // Or just re-trigger RXEN if disabled?
-    // If SHORTS END_DISABLE is set, radio is now DISABLED.
-    // We need to enable it again.
-    radio_rx_start();
-  }
-  return 0;
+    radio_packet_ready = true;
 }
 
-// ========== ANALYSIS ==========
-void analyze_data(packet_t *pkt) {
-  int16_t temp_sub = pkt->temp_substrate / 10;
-  int16_t temp_air = pkt->temp_air / 10;
-  uint16_t hum = pkt->humidity / 10;
+void RADIO_IRQHandler(void) {
+    if (NRF_RADIO->EVENTS_ADDRESS && (NRF_RADIO->INTENSET & RADIO_INTENSET_ADDRESS_Msk)) {
+        NRF_RADIO->EVENTS_ADDRESS = 0;
+        radio_address_matches++;
+    }
 
-  uint8_t is_day = (pkt->light > 2000);
-  uint8_t is_night = (pkt->light < 500);
+    if (NRF_RADIO->EVENTS_END && (NRF_RADIO->INTENSET & RADIO_INTENSET_END_Msk)) {
+        NRF_RADIO->EVENTS_END = 0;
 
-  LOG("\n=== GECKO MONITOR ===\n");
+        if ((NRF_RADIO->CRCSTATUS == 1) && (rx_pdu[1] == RADIO_PAYLOAD_LEN)) {
+            radio_handle_packet_from_isr();
+        } else {
+            radio_crc_errors_isr++;
+        }
+    }
 
-  LOG("Light: ");
-  LOG_UINT(pkt->light);
-  LOG("\n");
-
-  LOG("Water: ");
-  LOG_UINT(pkt->water);
-  LOG("\n");
-
-  LOG("Temp Substrate: ");
-  LOG_INT(temp_sub);
-  LOG(".");
-  LOG_UINT(pkt->temp_substrate % 10);
-  LOG(" C\n");
-
-  LOG("Temp Air: ");
-  LOG_INT(temp_air);
-  LOG(".");
-  LOG_UINT(pkt->temp_air % 10);
-  LOG(" C\n");
-
-  LOG("Humidity: ");
-  LOG_UINT(hum);
-  LOG(".");
-  LOG_UINT(pkt->humidity % 10);
-  LOG(" %\n");
-
-  LOG("Period: ");
-  if (is_day)
-    LOG("DAY\n");
-  else if (is_night)
-    LOG("NIGHT\n");
-  else
-    LOG("TWILIGHT\n");
-
-  // Anomaly detection
-  uint8_t critical = 0;
-  uint8_t warning = 0;
-
-  if (temp_air < 15 || temp_air > 28)
-    critical = 1;
-  if (temp_sub < 16 || temp_sub > 28)
-    critical = 1;
-  if (hum < 40 || hum > 85)
-    critical = 1;
-  if (pkt->water < 100)
-    critical = 1;
-
-  if (!critical) {
-    if (is_day && (temp_air < 22 || temp_air > 26))
-      warning = 1;
-    if (is_night && (temp_air < 18 || temp_air > 22))
-      warning = 1;
-    if (temp_sub < 20 || temp_sub > 25)
-      warning = 1;
-    if (is_day && (hum < 50 || hum > 70))
-      warning = 1;
-    if (is_night && (hum < 65 || hum > 80))
-      warning = 1;
-    if (pkt->water < 1200)
-      warning = 1;
-  }
-
-  // Set RGB LED and LED4
-  if (critical) {
-    rgb_set(1, 0, 0);       // RED
-    G_OUTSET = (1 << LED4); // LED4 ON (error)
-    LOG("STATUS: CRITICAL\n");
-  } else if (warning) {
-    rgb_set(1, 1, 0);       // YELLOW
-    G_OUTCLR = (1 << LED4); // LED4 OFF
-    LOG("STATUS: WARNING\n");
-  } else {
-    rgb_set(0, 1, 0);       // GREEN
-    G_OUTCLR = (1 << LED4); // LED4 OFF
-    LOG("STATUS: OK\n");
-  }
-  LOG("=====================\n");
+    if (NRF_RADIO->EVENTS_DISABLED && (NRF_RADIO->INTENSET & RADIO_INTENSET_DISABLED_Msk)) {
+        NRF_RADIO->EVENTS_DISABLED = 0;
+        NRF_RADIO->PACKETPTR = (uint32_t)rx_pdu;
+        NRF_RADIO->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+    }
 }
 
 // ========== MAIN ==========
+
 int main(void) {
-  gpio_init();
-  SEGGER_RTT_Init();
-  radio_init();
+    SEGGER_RTT_Init();
+    
+    LOG_INFO("=== RECEIVER ===");
+    
+    led_init();
+    led_set_blue(); // Синий - ожидание
+    
+    radio_init();
+    
+    radio_start_rx();
+    LOG_INFO("RX started");
+    
+    uint32_t packet_count = 0;
+    uint32_t crc_error_count = 0;
+    uint32_t address_match_count = 0;
+    uint32_t loop_count = 0;
+    uint32_t last_address_match_logged = 0;
+    uint32_t last_crc_error_logged = 0;
+    
+    LOG_INFO("Listening for packets...");
+    
+    while (1) {
+        loop_count++;
+        
+        uint32_t current_address_matches = radio_address_matches;
+        uint32_t current_crc_errors = radio_crc_errors_isr;
 
-  LOG("\n\n================================\n");
-  LOG("  BARE METAL GECKO RECEIVER\n");
-  LOG("  RGB: P0.13/14/15 | LED4: Error\n");
-  LOG("  Waiting for sensor data...\n");
-  LOG("================================\n\n");
+        if (current_address_matches != last_address_match_logged) {
+            if (current_address_matches <= 3) {
+                LOG_INFO(">>> ADDRESS MATCHED! (total: %d) <<<", current_address_matches);
+            }
+            last_address_match_logged = current_address_matches;
+        }
 
-  // Startup RGB test
-  rgb_set(1, 0, 0); // RED
-  delay_ms(300);
-  rgb_set(0, 1, 0); // GREEN
-  delay_ms(300);
-  rgb_set(0, 0, 1); // BLUE
-  delay_ms(300);
-  rgb_set(0, 0, 0); // OFF
+        if (current_crc_errors != last_crc_error_logged) {
+            if (current_crc_errors <= 5 || (current_crc_errors % 50 == 0)) {
+                LOG_ERROR("CRC error (total: %d)", current_crc_errors);
+            }
+            last_crc_error_logged = current_crc_errors;
+        }
 
-  // LED4 test
-  G_OUTSET = (1 << LED4);
-  delay_ms(300);
-  G_OUTCLR = (1 << LED4);
+        if (loop_count % 50000 == 0) {
+            address_match_count = current_address_matches;
+            crc_error_count = current_crc_errors;
+            LOG_INFO("Status: packets=%d, addr_match=%d, crc_errors=%d", 
+                     packet_count, address_match_count, crc_error_count);
+        }
 
-  radio_rx_start();
+        if (radio_packet_ready) {
+            __disable_irq();
+            packet_t pkt = rx_packet;
+            radio_packet_ready = false;
+            __enable_irq();
 
-  uint32_t packet_count = 0;
-  uint32_t heartbeat_counter = 0;
+            packet_count++;
+            
+            // Выключить синий, включить зеленый - данные пришли
+            GPIO_OUTCLR = (1UL << LED_BLUE_PIN);
+            GPIO_OUTSET = (1UL << LED_GREEN_PIN);
 
-  // Set Blue ON (Waiting state)
-  rgb_set(0, 0, 1);
-
-  while (1) {
-    if (radio_rx_check()) {
-      packet_count++;
-
-      // Blink Green on receive
-      rgb_set(0, 1, 0); // Green
-      delay_ms(100);    // Short blink
-
-      LOG("\n[Packet #");
-      LOG_UINT(packet_count);
-      LOG(" received]\n");
-
-      analyze_data(&rx_packet);
-
-      // Restart RX after processing
-      radio_rx_start();
-
-      // Return to Blue (Waiting state)
-      rgb_set(0, 0, 1);
+            // Выводим данные сенсоров
+            LOG_INFO("RX #%d: Light=%u Water=%u Tsub=%d.%d Tair=%d.%d Hum=%u.%u",
+                     packet_count,
+                     pkt.light,
+                     pkt.water,
+                     pkt.temp_substrate / 10,
+                     pkt.temp_substrate % 10,
+                     pkt.temp_air / 10,
+                     pkt.temp_air % 10,
+                     pkt.humidity / 10,
+                     pkt.humidity % 10);
+            
+            // Задержка 1 секунда с зеленым LED
+            for (volatile uint32_t i = 0; i < 1000000; i++) {
+                __NOP();
+            }
+            
+            // Выключить зеленый, включить синий - ожидание следующего пакета
+            GPIO_OUTCLR = (1UL << LED_GREEN_PIN);
+            GPIO_OUTSET = (1UL << LED_BLUE_PIN);
+        }
+        
+        // Небольшая задержка
+        for (volatile uint32_t i = 0; i < 10000; i++) {
+            __NOP();
+        }
     }
-
-    delay_ms(10);
-
-    // Heartbeat every 10 seconds (1000 * 10ms)
-    heartbeat_counter++;
-    if (heartbeat_counter >= 1000) {
-      LOG(".");
-      heartbeat_counter = 0;
-    }
-  }
+    
+    return 0;
 }
